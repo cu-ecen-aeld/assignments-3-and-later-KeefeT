@@ -9,13 +9,15 @@
 */
 bool do_system(const char *cmd)
 {
+    if ( NULL == cmd )
+    {
+        return false;
+    }
 
-/*
- * TODO  add your code here
- *  Call the system() function with the command set in the cmd
- *   and return a boolean true if the system() call completed with success
- *   or false() if it returned a failure
-*/
+    if ( -1 == system(cmd) )
+    {
+        return false;
+    }
 
     return true;
 }
@@ -47,7 +49,17 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    // command[count] = command[count];
+    
+    va_end(args);
+
+    //check to see if command is absolute path
+    //(starts with "/")
+
+    if (command[0][0] != '/')
+    {
+        return false;
+    }
 
 /*
  * TODO:
@@ -56,12 +68,31 @@ bool do_exec(int count, ...)
  *   Use the command[0] as the full path to the command to execute
  *   (first argument to execv), and use the remaining arguments
  *   as second argument to the execv() command.
- *
 */
 
-    va_end(args);
+    pid_t pid = fork();
 
-    return true;
+    if ( pid == -1 )
+    {
+        // error
+        return false;
+    }
+    else if ( pid > 0 )
+    {
+        //parent
+        int status;
+        waitpid(pid, &status, 0);
+        
+        return (WIFEXITED(status) && (WEXITSTATUS(status) == 0)); 
+
+    }
+    else
+    {
+        // child
+        execv(command[0], command);
+        // should never get here
+        return false;
+    }
 }
 
 /**
@@ -82,9 +113,8 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
-
-
+    //command[count] = command[count];
+    va_end(args);
 /*
  * TODO
  *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
@@ -93,7 +123,48 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
-    va_end(args);
+    //check to see if command is absolute path
+    //(starts with "/")
 
-    return true;
+    if (command[0][0] != '/')
+    {
+        return false;
+    }
+
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+
+    if (fd < 0)
+    {
+        //error opening file
+        return false;
+    }
+
+    pid_t pid = fork();
+
+    switch (pid)
+    {
+        case -1:
+            //error
+            close(fd);
+            return false;
+        case 0:
+            //child
+            if ( dup2(fd, 1) < 0 )
+            {
+                //error
+                return false;
+            }
+            close(fd);
+            execv(command[0], command);
+            // should never get here
+            return false;
+        default:
+            //parent
+            close(fd);
+            int status;
+            waitpid(pid, &status, 0);
+            
+            return (WIFEXITED(status) && (WEXITSTATUS(status) == 0)); 
+    }
+    return false;
 }
