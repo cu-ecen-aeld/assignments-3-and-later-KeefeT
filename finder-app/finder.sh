@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ -z $1 ] || [ -z $2 ] ; then #null check params 1 and 2
     echo "params null"
