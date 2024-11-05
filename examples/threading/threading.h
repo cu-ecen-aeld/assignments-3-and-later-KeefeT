@@ -15,6 +15,9 @@ struct thread_data{
      * your thread implementation.
      */
 
+    int wait_to_obtain_us;
+    int wait_to_release_us;
+    pthread_mutex_t* mtx;
     /**
      * Set to true if the thread completed with success, false
      * if an error occurred.
